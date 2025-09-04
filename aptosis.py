@@ -42,12 +42,18 @@ N = 1200
 
 ext = "pdf"
 
+import matplotlib.pyplot as plt
+import numpy as np
+import csv
 
-def export_all_plot_data_to_csv(base_filename):
+def export_all_plot_data_to_csv(base_filename, all_xaxis=False):
     """
     Exports all line and image data from the current matplotlib Axes.
-    - Lines are saved as: base_filename + '_lines.csv'
-    - Image (imshow) data are saved as: base_filename + '_image.csv'
+    - If all_xaxis is False:
+        - Lines are saved as: base_filename (x + multiple y columns)
+    - If all_xaxis is True:
+        - Each line's x and y data are saved in separate columns (x1, y1, x2, y2, ...)
+    - Image (imshow) data are saved as: base_filename + '_image_<n>.csv'
     """
     ax = plt.gca()
     lines = ax.get_lines()
@@ -56,35 +62,69 @@ def export_all_plot_data_to_csv(base_filename):
     # Export line data
     if lines:
         line_filename = base_filename
-        x_data = lines[0].get_xdata()
 
-        # Ensure x_data is not empty
-        if len(x_data) == 0:
-            print("Error: x_data is empty.")
-            return
+        headers = []
+        rows = []
 
-        header = ['x']
-        y_data_columns = []
+        if all_xaxis:
+            # Gather each x and y as separate column
+            all_data = []
+            max_len = 0
 
-        for idx, line in enumerate(lines):
-            label = line.get_label()
-            if label.startswith('_child'):
-                label = f'y{idx + 1}'
-            header.append(label)
-            y_data_columns.append(line.get_ydata())
+            for idx, line in enumerate(lines):
+                x = line.get_xdata()
+                y = line.get_ydata()
 
-        # Ensure y_data_columns are of the same length as x_data
-        if any(len(y_col) != len(x_data) for y_col in y_data_columns):
-            print("Error: y_data_columns lengths do not match x_data.")
-            return
+                if len(x) != len(y):
+                    print(f"Error: Line {idx + 1} has mismatched x and y data lengths.")
+                    return
 
+                label = line.get_label()
+                if label.startswith('_child'):
+                    label = f'y{idx + 1}'
+
+                headers.extend([f'x{idx + 1}', label])
+                all_data.append((x, y))
+                max_len = max(max_len, len(x))
+
+            # Build row-wise data
+            for i in range(max_len):
+                row = []
+                for x, y in all_data:
+                    row.append(x[i] if i < len(x) else '')
+                    row.append(y[i] if i < len(y) else '')
+                rows.append(row)
+        else:
+            # Shared x axis
+            x_data = lines[0].get_xdata()
+
+            if len(x_data) == 0:
+                print("Error: x_data is empty.")
+                return
+
+            headers = ['x']
+            y_data_columns = []
+
+            for idx, line in enumerate(lines):
+                label = line.get_label()
+                if label.startswith('_child'):
+                    label = f'y{idx + 1}'
+                headers.append(label)
+                y_data_columns.append(line.get_ydata())
+
+            if any(len(y_col) != len(x_data) for y_col in y_data_columns):
+                print("Error: y_data_columns lengths do not match x_data.")
+                return
+
+            for i in range(len(x_data)):
+                row = [x_data[i]] + [y_col[i] for y_col in y_data_columns]
+                rows.append(row)
+
+        # Write to CSV
         with open(line_filename, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(header)
-            for i in range(len(x_data)):
-                # Make sure we don't get an IndexError when accessing y_col[i]
-                row = [x_data[i]] + [y_col[i] for y_col in y_data_columns]
-                writer.writerow(row)
+            writer.writerow(headers)
+            writer.writerows(rows)
 
         print(f"Line data exported to '{line_filename}'")
 
@@ -95,7 +135,7 @@ def export_all_plot_data_to_csv(base_filename):
     if images:
         for idx, img in enumerate(images):
             img_data = img.get_array().data
-            img_filename = f"{base_filename}_image_{idx + 1}.csv"  # Different filename for each image
+            img_filename = f"{base_filename}_image_{idx + 1}.csv"
             np.savetxt(img_filename, img_data, delimiter=',')
             print(f"Image data exported to '{img_filename}'")
     else:
@@ -306,6 +346,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     plt.savefig(f"{BASE_PATH}/ratedistortioncurvetotal.{ext}")
-    export_all_plot_data_to_csv(f"{BASE_PATH}/ratedistortioncurvetotal.csv")
+    export_all_plot_data_to_csv(f"{BASE_PATH}/ratedistortioncurvetotal.csv", all_xaxis=True)
     plt.close()
     ## END ##

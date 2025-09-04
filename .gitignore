@@ -208,5 +208,6 @@ __marimo__/
 
 
 data
-aptosis_figures
-chemotaxis_figures
+*.pdf
+*.png
+*.tex
