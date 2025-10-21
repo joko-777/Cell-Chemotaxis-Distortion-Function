@@ -342,10 +342,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
     plt.savefig(f"{BASE_PATH}/ratedistortioncurvetotal.{ext}")
-<<<<<<< HEAD
     export_all_plot_data_to_csv(f"{BASE_PATH}/ratedistortioncurvetotal.csv", all_xaxis=True)
-=======
-    export_all_plot_data_to_csv(f"{BASE_PATH}/ratedistortioncurvetotal.csv")
->>>>>>> d6662f12dd1e4866873fe206b39452fdbee87028
     plt.close()
     ## END ##
